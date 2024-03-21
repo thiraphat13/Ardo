@@ -4,9 +4,8 @@
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <WiFiManager.h>
 
-const char* ssid = "TTTTTTTT";
-const char* password = "tyr221345";
 const char* mqtt_server = "broker.netpie.io";
 const int mqtt_port = 1883;
 const char* mqtt_Client = "8e96b804-1a98-4cfe-b8d1-b2470ccbf9a4";
@@ -22,8 +21,8 @@ int maxDv = 10;
 WiFiClient espClient;
 PubSubClient client(espClient);
 
-#define BUZZER_PIN 19
-#define BUTT_PIN 18
+#define BUZZER_PIN 33
+#define BUTT_PIN 19
 #define OLED_RESET 4
 
 Adafruit_SSD1306 display(OLED_RESET);
@@ -64,15 +63,23 @@ void sAlert() {
 
 void setup() {
   Serial.begin(115200);
-  Serial.print("Connecting to WiFi");
-  disprint("Connecting to WiFi", 1);
 
-  wifiConnect();
-  Serial.println("");
-  Serial.println("WiFi connected");
-  disprint("WiFi connected", 1);
-  Serial.println("IP address: ");
-  Serial.println(WiFi.localIP());
+  WiFiManager wm;
+
+    bool res;
+    res = wm.autoConnect("AutoConnectAP");
+    disprint("AutoConnectAP", 2);
+
+    if(!res) {
+        Serial.println("Failed to connect");
+        disprint("Failed to connect", 2);
+        ESP.restart();
+    } 
+    else {  
+        Serial.println("connected...yeey :)");
+        disprint("connected...yeey :)", 2);
+    }
+
   client.setServer(mqtt_server, mqtt_port);
   client.setCallback(callback);
 
@@ -83,14 +90,6 @@ void setup() {
   display.clearDisplay();
 }
 
-void wifiConnect() {
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
-  }
-}
 
 void checkStatus(String t) {
   if (t == "checkStatus") {
@@ -99,7 +98,6 @@ void checkStatus(String t) {
     sAlert();
     client.publish(topic_name, "Connected");
     client.publish(topic_open, "QC-1 : Confirm-checkStatus");
-    // publishtopic(" : Confirm-checkStatus");
     disprint("Connected", 2);
   } else if (t == "startStatus") {
     disprint("StartStatus", 2);
@@ -107,7 +105,6 @@ void checkStatus(String t) {
     sAlert();
     client.publish(topic_name, "Connected");
     client.publish(topic_open, "QC-1 : Confirm-startStatus");
-    // publishtopic(" : Confirm-checkStatus");
     disprint("Connected", 2);
     Q_cout = 0;
   }
@@ -121,7 +118,6 @@ void callMessage(String t, String m) {
       sAlert();
       client.publish(topic_name, "Confirm-Call");
       client.publish(topic_open, "QC-1 : Confirm-callMessage");
-      // publishtopic(" : Confirm-callMessage");
       disprint("Confirm", 2);
       Q_cout = 0;
     } else if (Q_cout == 1) {
@@ -130,7 +126,6 @@ void callMessage(String t, String m) {
       sAlert();
       client.publish(topic_name, "Confirm-Call");
       client.publish(topic_open, "QC-1 : Confirm-callMessage");
-      // publishtopic(" : Confirm-callMessage");
       disprint("Confirm", 2);
       Q_cout = 0;
     } else if (Q_cout != 0) {
@@ -145,7 +140,6 @@ void cancelMessage(String m) {
     sAlert();
     client.publish(topic_name, "Confirm-Cancel");
     client.publish(topic_open, "QC-1 : Confirm-cancelMessage");
-    // publishtopic(" : Confirm-cancelMessage");
     disprint("Confirm", 2);
     Q_cout = 0;
   }
@@ -168,10 +162,6 @@ void reQueue(String m) {
   }
 }
 
-// void publishtopic (String text) {
-//   client.publish(topic_open, nameDv&&text);
-// }
-
 void loop() {
   while (!client.connected()) {
     Serial.print("Attempting MQTT connection…");
@@ -184,7 +174,6 @@ void loop() {
       client.subscribe(topic_open);
       client.publish(topic_name, "Connected");
       client.publish(topic_open, "QC-1 : Connected");
-      // publishtopic(" : Connected");
     } else {
       Serial.print("failed, rc=");
       disprint("failed", 1);
